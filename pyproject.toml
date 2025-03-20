@@ -1,0 +1,9 @@
+[project]
+name = "py-uv-laprop-infers"
+version = "0.1.0"
+description = "处理多个包含laptop_infers.json文件的目录"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0.0"
+]
