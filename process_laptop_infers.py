@@ -33,6 +33,7 @@ def get_db_info(laptop_name: str, db_path: str) -> Tuple[str, str, str]:
 
     Args:
         laptop_name (str): 要查询的laptop_name
+        db_path (str): 数据库路径
 
     Returns:
         Tuple[str, str, str]: 返回 (db_pred, db_pred_score, db_gt)
@@ -40,11 +41,15 @@ def get_db_info(laptop_name: str, db_path: str) -> Tuple[str, str, str]:
                              如果没有找到记录，返回 ("no-sn", "no-sn", "no-sn")
                              如果查询出错，返回 ("error", "error", "error")
     """
+    logger = logging.getLogger(__name__)
+
     DB_Path = db_path
     if not os.path.exists(DB_Path):
+        logger.warning(f"数据库文件不存在: {DB_Path}")
         return "no-db", "no-db", "no-db"
 
     try:
+        logger.info(f"尝试连接数据库: {DB_Path}")
         conn = sqlite3.connect(DB_Path)
         cursor = conn.cursor()
 
@@ -60,12 +65,13 @@ def get_db_info(laptop_name: str, db_path: str) -> Tuple[str, str, str]:
             laptop_defect_predictions p ON l.id = p.laptop_id
         WHERE
             l.laptop_name = ? AND
-            l.created_at >= '2025-02-20'
+            l.created_at >= '2025-01-01'
         ORDER BY
             l.created_at DESC
         LIMIT 1
         """
 
+        logger.info(f"执行查询: laptop_name={laptop_name}")
         cursor.execute(query, (laptop_name,))
         record = cursor.fetchone()
         conn.close()
@@ -73,11 +79,13 @@ def get_db_info(laptop_name: str, db_path: str) -> Tuple[str, str, str]:
         if record:
             # 确保变量名与字段名一致
             pred, pred_score, gt = record
+            logger.info(f"找到记录: pred={pred}, pred_score={pred_score}, gt={gt}")
             return str(pred), str(pred_score), str(gt)
         else:
+            logger.warning(f"未找到匹配的记录: laptop_name={laptop_name}")
             return "no-sn", "no-sn", "no-sn"
     except Exception as e:
-        logging.error(f"查询数据库时出错: {str(e)}")
+        logger.error(f"查询数据库时出错: {str(e)}")
         return "error", "error", "error"
 
 class LaptopInfersProcessor:

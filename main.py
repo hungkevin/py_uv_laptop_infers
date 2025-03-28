@@ -18,7 +18,8 @@ def main():
     output_csv = str(current_dir / "laptop_infers_results.csv")
 
     # 定义数据库文件路径
-    db_path = str(current_dir / "test_02.db")
+    ##db_path = str(current_dir / "test_02.db")
+    db_path = str(current_dir / "test_03.db")
 
     try:
         # 初始化处理器，传入输入文件夹路径、输出CSV文件路径和数据库路径
