@@ -14,7 +14,7 @@ from schema import InferenceOutput, LaptopInfers, ModelParams, Labels
 
 def extract_laptop_name(laptop_key: str) -> str:
     """
-    从laptop_key中提取第四个下划线之前的文本作为laptop_name
+    从laptop_key中提取最后一个下划线之前的文本作为laptop_name
 
     Args:
         laptop_key (str): 完整的laptop_key字符串
@@ -22,10 +22,10 @@ def extract_laptop_name(laptop_key: str) -> str:
     Returns:
         str: 提取出的laptop_name
     """
-    parts = laptop_key.split('_', 4)
-    if len(parts) >= 4:
-        return '_'.join(parts[:4])
-    return laptop_key  # 如果没有足够的下划线，返回原始字符串
+    last_underscore_pos = laptop_key.rfind('_')
+    if last_underscore_pos != -1:
+        return laptop_key[:last_underscore_pos]
+    return laptop_key  # 如果没有下划线，返回原始字符串
 
 def get_db_info(laptop_name: str, db_path: str) -> Tuple[str, str, str]:
     """
