@@ -22,6 +22,14 @@
 python main.py
 ```
 
+或使用 uv（更快的 Python 包管理器）：
+
+```bash
+uv run [py_uv_laptop_infers的路徑]/main.py
+```
+
+程序默认处理当前目录及其子目录中的所有文件。
+
 ## 输出文件
 
 - **CSV 文件** - `laptop_infers_results.csv`：包含所有提取的信息，方便在电子表格软件中查看
@@ -82,6 +90,12 @@ pip install -r requirements.txt
 
 ```bash
 uv pip install -r requirements.txt
+```
+
+或使用 uv sync 自動按 pyproject.toml 建立環境：
+
+```bash
+uv sync
 ```
 
 ## 项目结构
