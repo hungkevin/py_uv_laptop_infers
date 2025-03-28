@@ -4,20 +4,23 @@
 
 ## 功能
 
-- 遍历指定目录中的所有子目录，找到 `laptop_infers.json` 文件以及对应的 `qc_result_` 文件和 `inference_` 文件
-- 读取并解析 JSON 文件，提取笔记本电脑瑕疵检测信息
-- 检查 JSON 文件中的 `labels` 信息，识别瑕疵位置和分数
-- 从 `inference_` 文件中提取 `mask_miss` 信息，识别 "Transformation not possible" 错误
-- 将提取的信息写入 CSV 和 JSON 文件，便于后续分析
-- 详细记录处理过程中的成功和失败信息，提供完整的日志
+- 遍历指定目录及其子目录，查找所有 `laptop_infers.json` 文件
+- 提取每个笔记本电脑的推理结果，包括瑕疵检测、分数和区域信息
+- 从 inference 日志文件中提取 mask_miss 信息
+- 从数据库中查询笔记本电脑的相关预测信息
+- 生成详细的处理报告，包括 CSV 和 JSON 格式的输出文件
+- 记录详细的处理日志，包括成功和失败的文件信息
 
 ## 使用方法
+
+1. 确保 Python 3.12 或更高版本已安装
+2. 安装所需依赖
+3. 确保 `schema.py` 文件位于项目目录中
+4. 运行 `main.py` 脚本
 
 ```bash
 python main.py
 ```
-
-程序默认处理当前目录及其子目录中的所有文件。
 
 ## 输出文件
 
@@ -28,6 +31,7 @@ python main.py
 ## CSV 文件字段说明
 
 - `laptop_key`: 笔记本电脑的唯一标识
+- `laptop_name`: 从 laptop_key 中提取的名称（第四个下划线之前的部分）
 - `defect`: 是否检测到瑕疵 (True/False)
 - `score`: 瑕疵分数，表示检测到瑕疵的置信度
 - `area_name`: 瑕疵所在区域名称
@@ -36,6 +40,9 @@ python main.py
 - `timestamp`: 时间戳
 - `qc_result_file`: QC结果文件名
 - `mask_miss`: 从inference日志中提取的mask缺失区域信息（以逗号分隔的字符串）
+- `db_pred`: 从数据库中获取的预测结果
+- `db_pred_score`: 从数据库中获取的预测分数
+- `db_gt`: 从数据库中获取的真实标签
 
 ## mask_miss 特殊说明
 
@@ -45,12 +52,25 @@ python main.py
 - "no_log" - 表示未找到 inference 文件
 - "error" - 表示读取 inference 文件时出错
 
+## 数据库查询
+
+程序会从数据库中查询以下信息：
+- 笔记本电脑的预测结果 (pred)
+- 预测分数 (pred_score)
+- 真实标签 (gt)
+
+如果查询失败，将返回以下值之一：
+- "no-db" - 表示数据库文件不存在
+- "no-sn" - 表示在数据库中未找到该笔记本电脑
+- "error" - 表示数据库查询出错
+
 ## 依赖
 
 - Python >= 3.12
 - pydantic >= 2.0.0
 - typing-extensions >= 4.0.0
 - pathlib >= 1.0.1
+- sqlite3 (Python 标准库)
 
 ## 安装依赖
 
@@ -66,13 +86,24 @@ uv pip install -r requirements.txt
 
 ## 项目结构
 
-```
-py_uv_laprop_infers/
-├── main.py                # 程序入口
-├── process_laptop_infers.py # 核心处理逻辑
-├── schema.py              # 数据模型定义
-├── requirements.txt       # 依赖包清单
-├── pyproject.toml         # 项目配置
-├── README.md              # 项目说明文档
-└── logs/                  # 日志目录（程序运行时创建）
-```
+- `main.py` - 主程序入口
+- `process_laptop_infers.py` - 核心处理逻辑
+- `schema.py` - 数据结构定义
+- `test_02.db` - SQLite 数据库，存储笔记本电脑信息和预测结果
+- `logs/` - 日志文件目录
+- `requirements.txt` - 依赖列表
+
+## 开发说明
+
+### 添加新功能
+
+要添加新功能，可以扩展 `LaptopInfersProcessor` 类或修改现有的处理流程。主要的处理逻辑位于以下方法中：
+
+- `find_json_files()` - 查找 JSON 文件
+- `read_inference_file()` - 读取 inference 文件并提取 mask_miss 信息
+- `process_json_data()` - 处理 JSON 数据并提取所需信息
+- `write_to_csv()` - 将结果写入 CSV 文件
+
+### 数据库配置
+
+默认情况下，程序会在当前目录中查找名为 `test_02.db` 的 SQLite 数据库文件。可以通过修改 `main.py` 中的 `db_path` 变量来更改数据库位置。

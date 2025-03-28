@@ -1,0 +1,92 @@
+Project db_from_sqlite {
+    database_type: 'SQLite'
+    Note: 'Auto-generated from SQLite DB'
+}
+
+Table annotations {
+  id int [pk, increment, not null]
+  image_id int [not null, ref: > images.id]
+  category_id int [not null, ref: > categories.id]
+  bbox varchar(255) [not null]
+  conf float
+  is_ground_truth boolean [not null]
+  inference_event_id int [ref: > inference_events.id]
+  user_id int [ref: > users.id]
+  created_at datetime
+}
+
+Table categories {
+  id int [pk, increment, not null]
+  name varchar(100) [not null]
+  supercategory varchar(100)
+}
+
+Table images {
+  id int [pk, increment, not null]
+  laptop_id int [not null, ref: > laptops.id]
+  image_uri varchar(255) [not null]
+  file_name varchar(50) [not null]
+  width int [not null]
+  height int [not null]
+  user_id int [not null, ref: > users.id]
+  created_at datetime
+}
+
+Table inference_events {
+  id int [pk, increment, not null]
+  laptop_id int [not null, ref: > laptops.id]
+  start_time datetime
+  end_time datetime
+  status varchar(50)
+  results json
+  api_version varchar(50) [not null]
+  inference_parameters json
+  user_id int [not null, ref: > users.id]
+}
+
+Table laptop_defect_predictions {
+  id int [pk, increment, not null]
+  inference_event_id int [not null, ref: > inference_events.id]
+  laptop_id int [not null, ref: > laptops.id]
+  pred boolean [not null]
+  pred_score float
+  gt boolean
+  gt_labeler_id int [ref: > users.id]
+  created_at datetime
+  updated_at datetime
+}
+
+Table laptop_profiles {
+  id int [pk, increment, not null]
+  name varchar(50) [not null]
+  laptop_component varchar(50) [not null]
+  laptop_profile_metadata json
+  user_id int [not null, ref: > users.id]
+  created_at datetime
+  updated_at datetime
+}
+
+Table laptops {
+  id int [pk, increment, not null]
+  laptop_profile_id int [not null, ref: > laptop_profiles.id]
+  laptop_name varchar(100) [not null]
+  laptop_metadata json
+  user_id int [not null, ref: > users.id]
+  created_at datetime
+  updated_at datetime
+}
+
+Table user_roles {
+  user_id int [pk, increment, not null, ref: > users.id]
+  role varchar(50) [pk, not null]
+  created_at datetime
+}
+
+Table users {
+  id int [pk, increment, not null]
+  username varchar(50) [not null]
+  email varchar(100) [not null]
+  password_hash varchar(255) [not null]
+  created_at datetime
+  updated_at datetime
+}

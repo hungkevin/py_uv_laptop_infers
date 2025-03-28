@@ -2,14 +2,86 @@ import os
 import json
 import csv
 import re
+import sqlite3
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import logging
 from schema import InferenceOutput, LaptopInfers, ModelParams, Labels
 
+# 设置数据库路径
+##DB_Path = "./test_02.db"  # 可以根据需要修改为实际的数据库路径
+
+def extract_laptop_name(laptop_key: str) -> str:
+    """
+    从laptop_key中提取第四个下划线之前的文本作为laptop_name
+
+    Args:
+        laptop_key (str): 完整的laptop_key字符串
+
+    Returns:
+        str: 提取出的laptop_name
+    """
+    parts = laptop_key.split('_', 4)
+    if len(parts) >= 4:
+        return '_'.join(parts[:4])
+    return laptop_key  # 如果没有足够的下划线，返回原始字符串
+
+def get_db_info(laptop_name: str, db_path: str) -> Tuple[str, str, str]:
+    """
+    从数据库中查询laptop_name相关信息
+
+    Args:
+        laptop_name (str): 要查询的laptop_name
+
+    Returns:
+        Tuple[str, str, str]: 返回 (db_pred, db_pred_score, db_gt)
+                             如果数据库不存在，返回 ("no-db", "no-db", "no-db")
+                             如果没有找到记录，返回 ("no-sn", "no-sn", "no-sn")
+                             如果查询出错，返回 ("error", "error", "error")
+    """
+    DB_Path = db_path
+    if not os.path.exists(DB_Path):
+        return "no-db", "no-db", "no-db"
+
+    try:
+        conn = sqlite3.connect(DB_Path)
+        cursor = conn.cursor()
+
+        # 修正查询语句，确保字段名与analyze_gt.py中一致
+        query = """
+        SELECT
+            p.pred,
+            p.pred_score,
+            p.gt
+        FROM
+            laptops l
+        LEFT JOIN
+            laptop_defect_predictions p ON l.id = p.laptop_id
+        WHERE
+            l.laptop_name = ? AND
+            l.created_at >= '2025-02-20'
+        ORDER BY
+            l.created_at DESC
+        LIMIT 1
+        """
+
+        cursor.execute(query, (laptop_name,))
+        record = cursor.fetchone()
+        conn.close()
+
+        if record:
+            # 确保变量名与字段名一致
+            pred, pred_score, gt = record
+            return str(pred), str(pred_score), str(gt)
+        else:
+            return "no-sn", "no-sn", "no-sn"
+    except Exception as e:
+        logging.error(f"查询数据库时出错: {str(e)}")
+        return "error", "error", "error"
+
 class LaptopInfersProcessor:
-    def __init__(self, input_folder: str, output_csv: str):
+    def __init__(self, input_folder: str, output_csv: str, db_path: str):
         """
         初始化处理器
 
@@ -19,6 +91,7 @@ class LaptopInfersProcessor:
         """
         self.input_folder = Path(input_folder)
         self.output_csv = Path(output_csv)
+        self.db_path = Path(db_path)
 
         # 确保日志目录存在
         log_dir = Path("logs")
@@ -185,6 +258,10 @@ class LaptopInfersProcessor:
                 return results
 
             laptop_key = inference_output.laptop_key
+            laptop_name = extract_laptop_name(laptop_key)
+
+            # 获取数据库信息
+            db_pred, db_pred_score, db_gt = get_db_info(laptop_name, self.db_path)
 
             for infer in inference_output.laptop_infers:
                 if infer.results:
@@ -202,8 +279,7 @@ class LaptopInfersProcessor:
                         # 如果没有检测到瑕疵，设置为 None
                         area_name, boxes, matched_score = None, None, None
 
-                    # 直接使用mask_miss_areas列表，不转换为字符串
-                    # 无论是否检测到瑕疵，都记录结果
+                    # 添加数据库信息到结果中
                     results.append({
                         'laptop_key': laptop_key,
                         'defect': defect,
@@ -213,7 +289,11 @@ class LaptopInfersProcessor:
                         'matched_score': matched_score,
                         'timestamp': infer.timestamp,
                         'qc_result_file': qc_result_file,
-                        'mask_miss': mask_miss_areas  # 直接使用列表
+                        'mask_miss': mask_miss_areas,  # 直接使用列表
+                        'laptop_name': laptop_name,
+                        'db_pred': db_pred,
+                        'db_pred_score': db_pred_score,
+                        'db_gt': db_gt
                     })
 
         except Exception as e:
@@ -247,11 +327,12 @@ class LaptopInfersProcessor:
                     csv_result['mask_miss'] = ', '.join(csv_result['mask_miss'])
                 csv_results.append(csv_result)
 
-            # 定义CSV字段
+            # 定义CSV字段，添加新字段
             fieldnames = [
                 'laptop_key', 'defect', 'score',
                 'area_name', 'boxes', 'matched_score',
-                'timestamp', 'qc_result_file', 'mask_miss'
+                'timestamp', 'qc_result_file', 'mask_miss',
+                'laptop_name', 'db_pred', 'db_pred_score', 'db_gt'
             ]
 
             # 使用标准CSV写入器
